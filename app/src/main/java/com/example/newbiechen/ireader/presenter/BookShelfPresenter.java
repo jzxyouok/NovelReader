@@ -11,6 +11,7 @@ import com.example.newbiechen.ireader.presenter.contract.BookShelfContract;
 import com.example.newbiechen.ireader.ui.base.RxPresenter;
 import com.example.newbiechen.ireader.utils.Constant;
 import com.example.newbiechen.ireader.utils.LogUtils;
+import com.example.newbiechen.ireader.utils.MD5Utils;
 import com.example.newbiechen.ireader.utils.RxUtils;
 import com.example.newbiechen.ireader.utils.StringUtils;
 
@@ -100,6 +101,7 @@ public class BookShelfPresenter extends RxPresenter<BookShelfContract.View>
                         .getBookDetail(collBook.get_id()));
             }
         }
+        //zip可能不是一个好方法。
         Single.zip(observables, new Function<Object[], List<CollBookBean>>() {
             @Override
             public List<CollBookBean> apply(Object[] objects) throws Exception {
@@ -161,6 +163,11 @@ public class BookShelfPresenter extends RxPresenter<BookShelfContract.View>
         Single.concat(observables)
                 .subscribe(
                         chapterList -> {
+
+                            for (BookChapterBean bean : chapterList){
+                                bean.setId(MD5Utils.strToMd5By16(bean.getLink()));
+                            }
+
                             CollBookBean bean = it.next();
                             bean.setLastRead(StringUtils.
                                     dateConvert(System.currentTimeMillis(), Constant.FORMAT_BOOK_DATE));

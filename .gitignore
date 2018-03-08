@@ -54,3 +54,11 @@ google-services.json
 freeline.py
 freeline/
 freeline_project_description.json
+
+# note
+app/daily
+
+# ssh
+.ssh
+app/libs/
+gradle/.DS_Store

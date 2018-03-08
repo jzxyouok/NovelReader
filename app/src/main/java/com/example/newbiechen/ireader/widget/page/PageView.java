@@ -3,11 +3,11 @@ package com.example.newbiechen.ireader.widget.page;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.RectF;
 import android.util.AttributeSet;
-import android.util.DisplayMetrics;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.WindowManager;
+import android.view.ViewConfiguration;
 
 import com.example.newbiechen.ireader.utils.ScreenUtils;
 import com.example.newbiechen.ireader.widget.animation.CoverPageAnim;
@@ -37,13 +37,20 @@ public class PageView extends View {
     private int mViewWidth = 0; // 当前View的宽
     private int mViewHeight = 0; // 当前View的高
 
-    private int moveX = 0;
-    private int moveY = 0;
-    //是否允许点击
-    private Boolean canTouch = true;
+    private int mStartX = 0;
+    private int mStartY = 0;
+    private boolean isMove = false;
     //初始化参数
     private int mBgColor = 0xFFCEC29C;
     private int mPageMode = PAGE_MODE_SIMULATION;
+
+    //是否允许点击
+    private boolean canTouch = true;
+    //判断是否初始化完成
+    private boolean isPrepare = false;
+    //唤醒菜单的区域
+    private RectF mCenterRect = null;
+
     //动画类
     private PageAnimation mPageAnim;
     //动画监听类
@@ -87,9 +94,13 @@ public class PageView extends View {
         super.onSizeChanged(w, h, oldw, oldh);
         mViewWidth = w;
         mViewHeight = h;
+        //初始化完成
+        isPrepare = true;
+
         //重置图片的大小,由于w,h可能比原始的Bitmap更大，所以如果使用Bitmap.setWidth/Height()是会报错的。
         //所以最终还是创建Bitmap的方式。这种方式比较消耗性能，暂时没有找到更好的方法。
         setPageMode(mPageMode);
+
         //重置页面加载器的页面
         mPageLoader.setDisplaySize(w,h);
     }
@@ -161,10 +172,10 @@ public class PageView extends View {
         if (direction == PageAnimation.Direction.NEXT){
             int x = mViewWidth;
             int y = mViewHeight;
-            //设置点击点
-            mPageAnim.setTouchPoint(x,y);
             //初始化动画
             mPageAnim.setStartPoint(x,y);
+            //设置点击点
+            mPageAnim.setTouchPoint(x,y);
             //设置方向
             Boolean hasNext = hasNext();
 
@@ -201,8 +212,10 @@ public class PageView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
+
         //绘制背景
         canvas.drawColor(mBgColor);
+
         //绘制动画
         mPageAnim.draw(canvas);
     }
@@ -210,36 +223,48 @@ public class PageView extends View {
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         super.onTouchEvent(event);
+
         if (!canTouch && event.getAction() != MotionEvent.ACTION_DOWN) return true;
 
         int x = (int) event.getX();
         int y = (int) event.getY();
         switch (event.getAction()){
             case MotionEvent.ACTION_DOWN:
-                moveX = 0;
-                moveY = 0;
+                mStartX = x;
+                mStartY = y;
+                isMove = false;
                 canTouch = mTouchListener.onTouch();
                 mPageAnim.onTouchEvent(event);
                 break;
             case MotionEvent.ACTION_MOVE:
-                moveX = x;
-                moveY = y;
-                mPageAnim.onTouchEvent(event);
+                //判断是否大于最小滑动值。
+                int slop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
+                if (!isMove){
+                    isMove = Math.abs(mStartX - event.getX()) > slop || Math.abs(mStartY - event.getY()) > slop;
+                }
+
+                //如果滑动了，则进行翻页。
+                if(isMove){
+                    mPageAnim.onTouchEvent(event);
+                }
                 break;
             case MotionEvent.ACTION_UP:
-                if (moveX == 0 && moveY == 0){
+
+                if (!isMove){
+                    //设置中间区域范围
+                    if (mCenterRect == null){
+                        mCenterRect = new RectF(mViewWidth/5,mViewHeight/3,
+                                mViewWidth*4/5,mViewHeight*2/3);
+                    }
+
                     //是否点击了中间
-                    if (x > mViewWidth / 4 && x < mViewWidth * 3 / 4
-                            && y > mViewHeight / 3 && y < mViewHeight * 2 / 3) {
+                    if (mCenterRect.contains(x,y)) {
                         if (mTouchListener != null) {
                             mTouchListener.center();
                         }
                         return true;
                     }
                 }
-                mPageAnim.onTouchEvent(event);
-                break;
-            default:
                 mPageAnim.onTouchEvent(event);
                 break;
         }
@@ -282,6 +307,10 @@ public class PageView extends View {
     //如果滑动状态没有停止就取消状态，重新设置Anim的触碰点
     public void abortAnimation() {
         mPageAnim.abortAnim();
+    }
+
+    public boolean isPrepare(){
+        return isPrepare;
     }
 
     public boolean isRunning(){

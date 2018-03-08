@@ -223,19 +223,21 @@ public class ReadSettingDialog extends Dialog{
                 if (mCbBrightnessAuto.isChecked()) {
                     mCbBrightnessAuto.setChecked(false);
                 }
+                //设置当前 Activity 的亮度
                 BrightnessUtils.setBrightness(mActivity,progress);
-                //设置进度
+                //存储亮度的进度条
                 ReadSettingManager.getInstance().setBrightness(progress);
             }
         });
+
         mCbBrightnessAuto.setOnCheckedChangeListener(
                 (buttonView, isChecked) -> {
                     if (isChecked){
-                        BrightnessUtils.startAutoBrightness(mActivity);
+                        //获取屏幕的亮度
                         BrightnessUtils.setBrightness(mActivity,BrightnessUtils.getScreenBrightness(mActivity));
                     }
                     else {
-                        BrightnessUtils.stopAutoBrightness(mActivity);
+                        //获取进度条的亮度
                         BrightnessUtils.setBrightness(mActivity,mSbBrightness.getProgress());
                     }
                     ReadSettingManager.getInstance().setAutoBrightness(isChecked);
@@ -315,5 +317,12 @@ public class ReadSettingDialog extends Dialog{
                     dismiss();
                 }
         );
+    }
+
+    public boolean isBrightFollowSystem(){
+        if (mCbBrightnessAuto == null){
+            return false;
+        }
+        return mCbBrightnessAuto.isChecked();
     }
 }
